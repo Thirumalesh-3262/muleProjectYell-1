@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="9a5bf0df-cf0f-4e82-96a8-834594b251c9" >
+		<db:my-sql-connection host="${secure::database.host}" port="${secure::database.port}" user="${secure::database.username}" password="${secure::database.password}" database="${secure::database.database}"/>
+	</db:config>
+	<configuration-properties doc:name="Configuration properties" doc:id="e9d47faa-c017-45de-9a75-a33b506cf5a9" file="common.yaml" />
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="a8e60668-c3be-4734-b7c5-450942f51ddd" file="common.yaml" key="database" >
+		<secure-properties:encrypt algorithm="Blowfish" />
+	</secure-properties:config>
+	<sub-flow name="InsertingIntoDatabase" doc:id="fc4aa64b-3ead-4e64-8d6a-d2a8f09902e2" >
+		<logger level="INFO" doc:name="Starting Logger" doc:id="f05f871b-ad12-4fb0-a699-52fa96f1c7b1" message='#["Data Coming from the Payload::::::::::::::"]'/>
+		<ee:transform doc:name="Transform Message" doc:id="c6499fb1-9378-4567-bed0-20ec4ccdb0aa">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Name": payload.Name,
+	"Age": payload.Age,
+	"Location": payload.Location
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:insert doc:id="626feebf-7a83-4356-ad07-7ebfc3115e26" config-ref="Database_Config" doc:name="MySQL Database ">
+			<db:sql><![CDATA[INSERT INTO student (Name, Age, Location)
+VALUES (:Name, :Age, :Location)
+    ]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"Name": payload.Name,
+	"Age": payload.Age,
+	"Location": payload.Location
+}]]]></db:input-parameters>
+		</db:insert>
+		<logger level="INFO" doc:name="Ending Logger" doc:id="a2286b28-243e-4338-bc05-9a6b0d754d07" message="#[payload]"/>
+		<ee:transform doc:name="Transform Message" doc:id="372bd6c3-8cc9-429c-9963-851ba82ac11c">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  Message: "Data Inserted Successfully.",
+  Status: "Success"
+} ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+</mule>
